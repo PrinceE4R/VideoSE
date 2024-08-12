@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT-b-SE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inria+Sans:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Lalezar&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        #player {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            transform: translate(-50%, -50%);
+        }
+        .control-bar,
+        .control-bar * {
+            box-sizing: border-box;
+        }
+       .control-bar {
+            position: fixed;
+            bottom: -150px; /* Initially hidden below the viewport */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3; /* Ensure the control bar is above the overlay */
+            transition: bottom 0.3s ease; /* Smooth transition */
+        }
+
+        .control-bar.show {
+            bottom: 15px; /* Show the control bar */
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0);
+            z-index: 2;
+        }
+        .bar {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            width: 300px;
+            height: 125px;
+            position: absolute;
+            left: calc(50% - 150px);
+            bottom: 0px;
+        }
+        .next,
+        .play,
+        .previous,
+        .speaker {
+            transition: transform 0.3s ease; /* Animation for transform */
+        }
+        .next {
+            width: 23.96px;
+            height: 29.02px;
+            position: absolute;
+            left: calc(50% - -27.52px);
+            bottom: 25.98px;
+            overflow: visible;
+        }
+        .play {
+            width: 22.52px;
+            height: 25.74px;
+            position: absolute;
+            left: calc(50% - 20px);
+            bottom: 27.26px;
+            overflow: visible;
+        }
+        .previous {
+            width: 23.96px;
+            height: 29.02px;
+            position: absolute;
+            left: calc(50% - 70.00px);
+            bottom: 25.98px;
+            overflow: visible;
+        }
+        .speaker {
+            width: 34px;
+            height: 32px;
+            position: absolute;
+            left: calc(50% - 126px);
+            bottom: 24px;
+            overflow: visible;
+        }
+        .quality {
+            width: 55px;
+            height: 31px;
+            position: static;
+        }
+        .previous-skip {
+            width: 15px;
+            height: 31px;
+            position: absolute;
+            left: calc(50% - -74px);
+            bottom: 25px;
+            overflow: visible;
+        }
+
+        .previous-skip.move {
+            transform: translateX(-10px);
+            transition: transform 0.3s ease;
+        }
+        .next-skip {
+            width: 15px;
+            height: 31px;
+            position: absolute;
+            left: calc(50% - -115px);
+            bottom: 25px;
+            overflow: visible;
+        }
+
+        .next-skip.move {
+            transform: translateX(10px);
+            transition: transform 0.3s ease;
+        }
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ffffff;
+            border-radius: 5px;
+            width: 170px;
+            height: 10px;
+            position: absolute;
+            right: -25px;
+            top: -70px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            border-radius: 10px;
+            height: 20px;
+            width: 20px;
+            background-color: #dedede;
+        }
+        .playtime {
+            color: #ffffff;
+            text-align: left;
+            font-family: "Lalezar", system-ui;
+            font-weight: 400;
+            font-size: 26.49228858947754px;
+            font-weight: 400;
+            position: absolute;
+            right: -100px;
+            top: -81px;
+            width: 50px;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div id="player"></div>
+    <div class="overlay"></div>
+    <div class="control-bar">
+        <div class="bar"></div>
+        <img class="next" src="./materials/Next.svg" />
+        <img class="play" src="./materials/Play.svg" />
+        <img class="previous" src="./materials/Previous.svg" />
+        <img class="speaker" src="./materials/Speaker (Mute).svg" />
+        <div class="quality">
+            <div class="playtime">0:00</div>
+            <input type="range" class="slider" min="0" max="100" value="0">
+            <img class="previous-skip" src="./materials/PreviousQuality.svg" />
+            <img class="next-skip" src="./materials/NextQuality.svg" />
+        </div>
+    </div>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let player;
+        const playButton = document.querySelector('.play');
+        const previousButton = document.querySelector('.previous');
+        const previousSButton = document.querySelector('.previous-skip');
+        const nextSButton = document.querySelector('.next-skip');
+        const nextButton = document.querySelector('.next');
+        const seekSlider = document.querySelector('.slider');
+        const playtime = document.querySelector('.playtime');
+        const controlBar = document.querySelector('.control-bar');
+        const speakerButton = document.querySelector('.speaker');
+
+        function onYouTubeIframeAPIReady() {
+            let choice = 2; 
+
+            let playerOptions = {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'fs': 1,
+                    'iv_load_policy': 3,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'showinfo': 0
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            };
+
+            if (choice === 1) {
+                playerOptions.playerVars['listType'] = 'playlist';
+                playerOptions.playerVars['list'] = 'RDATrXa0126d_mxI11f2wbg351I11ky8jhvp3E';
+            } else if (choice === 2) {
+                let yv = 'CBRwF0LU3Ys';
+                playerOptions.playerVars['listType'] = 'none';
+                playerOptions.playerVars['videoId'] = yv;
+                playerOptions.playerVars['loop'] = 1;
+                playerOptions.playerVars['playlist'] = yv;
+            }
+
+            player = new YT.Player('player', playerOptions);
+        }
+
+        function onPlayerReady(event) {
+            player.mute();
+            updatePlayButton();
+            updatePlaytime();
+            setInterval(updatePlaytime, 1000);
+        }
+
+        function onPlayerStateChange(event) {
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                playButton.src = './materials/Pause.svg';
+                playButton.style.transform = 'scale(1.1)';
+            } else {
+                playButton.src = './materials/Play.svg';
+                playButton.style.transform = 'scale(1)';
+            }
+        }
+
+        function updatePlaytime() {
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            seekSlider.value = (currentTime / duration) * 100;
+            playtime.textContent = formatTime(currentTime);
+        }
+
+        function formatTime(time) {
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60);
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        playButton.addEventListener('click', () => {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        });
+
+        previousButton.addEventListener('click', () => {
+            player.previousVideo();
+        });
+
+        nextButton.addEventListener('click', () => {
+            player.nextVideo();
+        });
+
+        seekSlider.addEventListener('input', (e) => {
+            const seekTo = player.getDuration() * (e.target.value / 100);
+            player.seekTo(seekTo, true);
+        });
+
+        previousSButton.addEventListener('click', () => {
+            const currentTime = player.getCurrentTime();
+            player.seekTo(currentTime - 10, true); // Skip backward 10 seconds
+            previousSButton.classList.add('move');
+            setTimeout(() => {
+        previousSButton.classList.remove('move');
+    }, 250);
+        });
+
+        nextSButton.addEventListener('click', () => {
+            const currentTime = player.getCurrentTime();
+            player.seekTo(currentTime + 10, true); // Skip forward 10 seconds
+            nextSButton.classList.add('move');
+            setTimeout(() => {
+        nextSButton.classList.remove('move');
+    }, 250);
+        });
+
+        speakerButton.addEventListener('click', () => {
+            if (player.isMuted()) {
+                player.unMute();
+                speakerButton.src = './materials/Speaker.svg';
+                speakerButton.style.transform = 'rotate(360deg)'; // Rotate when unmuted
+            } else {
+                player.mute();
+                speakerButton.src = './materials/Speaker (Mute).svg';
+                speakerButton.style.transform = 'rotate(-360deg)'; // Rotate when muted
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (e.clientY > window.innerHeight - 180) {
+                controlBar.classList.add('show'); // Show the control bar
+            } else {
+                controlBar.classList.remove('show'); // Hide the control bar
+            }
+        });
+    </script>
+</body>
+</html>
