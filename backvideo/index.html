@@ -254,21 +254,32 @@ function onPlayerReady(event) {
     player.mute();
     updatePlayButton();
     updatePlaytime();
-    updateMobileCover();
+    updateMobileCover()
     setInterval(updatePlaytime, 500);
 }
 
 function onPlayerStateChange(event) {
     updatePlayButton();
+    updateMobileCover();
+}
+
+function updateMobileCovertoThumbnail() {
+    const videoId = player.getVideoData().video_id; // Get the current video ID
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    document.querySelector('.overlay2').style.backgroundImage = `url(${thumbnailUrl})`;
+}
+
+function updateMobileCovertoNone() {
+    document.querySelector('.overlay2').style.backgroundImage = "none";
 }
 
 function updateMobileCover() {
-    const videoId = player.getVideoData().video_id; // Get the current video ID
-    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-    if (window.innerWidth <= 768) {
-        document.querySelector('.overlay2').style.backgroundImage = `url(${thumbnailUrl})`;
-    } else {
-        document.querySelector('.overlay2').style.backgroundImage = 'none';
+    if (window.innerWidth <= 768 || player.getPlayerState() === YT.PlayerState.PAUSED) // remove this line after || to stop mobile cover on pause
+    {
+        updateMobileCovertoThumbnail();
+    }
+    else {
+        updateMobileCovertoNone();
     }
 }
 
